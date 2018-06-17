@@ -2,10 +2,10 @@
 <html>
 	
 	<head lang="en">
-		<meta charset="UTF-8">                                                                               <!--LITE-->
+		<meta charset="UTF-8">                                                                               
 		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.2.0/leaflet.css"/>     <!--Leaflet Imports (CSS)-->
-		<style>html, body, #map {margin: 0;height: 100%;width: 100%;}</style>                                <!--LITE-->
-		<title>MeghalayaMines</title>                 														 <!--title of web page-->
+		<style>html, body, #map {margin: 0;height: 100%;width: 100%;}</style>                                
+		<title>WFS Layer</title>                 														 	 <!--title of web page-->
 		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>             <!--ajax Imports-->
 	</head>
 	
@@ -15,8 +15,9 @@
 		<script>
 			
 			<!--  Define map container and set map layer -->
-			var map = L.map('map').setView([25, 91], 5);
-			var basemap = L.tileLayer('http://{s}.tile.cloudmade.com/a8ed148d84c2438ba62c2742cac051ae/33356/256/{z}/{x}/{y}.png', {
+			var map = L.map('map').setView([25.50, 91], 8);
+			var basemap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+				attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
 				maxZoom: 18
 			}).addTo(map);
 			
