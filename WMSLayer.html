@@ -1,0 +1,52 @@
+ <!DOCTYPE html>
+<html>
+
+	<head>
+		<title>WMS Layer</title>
+		<link rel = "stylesheet" href = "http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.css"/>		<!--Leaflet Imports (CSS)-->
+		<script src = "http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.js"></script>					<!--Leaflet Imports (javascript part)-->
+	</head>
+   
+	<body>
+	
+		<div id = "map" style = "width:900px; height:580px"></div>						   			<!--Create a div container for map-->
+		
+		<script>
+		
+			<!-- Creating map options -->
+			var mapOptions = {
+				center: [25.50, 91],
+				zoom: 8
+			}
+		 
+			<!-- Creating a map object -->
+			var map = new L.map('map', mapOptions);
+         
+			<!-- Creating a map layer using Leaflet's TileLayer object -->
+			var mapLayer = new L.TileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+				attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+			});
+       
+			<!-- Adding Map layer to the map -->
+			map.addLayer(mapLayer);
+			 
+			<!-- Creating wms layer to the map -->
+			var wmsLayer= L.tileLayer.wms("http://localhost:8080/geoserver/NESAC/wms?", { <!--Change "NESAC" to your Workspace name-->
+				layers: 'polygons10',													  <!--Change "polygons10" to your layer name-->
+				format: 'image/png',
+				transparent: true
+			});
+			<!-- Adding WMS layer to the map -->
+			map.addLayer(wmsLayer);
+		
+			<!-- Creating a marker -->
+			var marker = L.marker([25.50, 91]);
+         
+			<!-- Adding marker to the map -->
+			marker.addTo(map);
+			
+		</script>
+	  
+	</body>
+   
+</html>
