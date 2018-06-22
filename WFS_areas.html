@@ -5,7 +5,7 @@
 		<meta charset="UTF-8">                                                                               
 		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.2.0/leaflet.css"/>     <!--Leaflet Imports (CSS)-->
 		<style>html, body, #map {margin: 0;height: 100%;width: 100%;}</style>                                
-		<title>WFS Layer</title>      
+		<title>WFS Areas</title>      
 		<link rel="stylesheet" type="text/css" href="css/dc.css"> 			<!--Simple CSS imports, need not worry-->
 		<link rel="stylesheet" type="text/css" href="css/leaflet.css">
 		<link rel="stylesheet" type="text/css" href="css/bootstrap.css">
@@ -14,6 +14,33 @@
 	</head>
 	
 	<body>
+	  <div class="row" id="control-row">									 <!--3XPie Charts Or Map wali Line-->
+	<div class="col-xs-6 pie-chart">
+      <h4>Area <small><a id="area">reset</a></small></h4>
+      <div class="dc-chart" id="chart-ring-area"></div>
+    </div>
+    <div class="col-xs-6">
+      <h4>Breweries</h4>
+      <div id="map"></div>
+    </div>
+  </div>
+  
+  <div class="row">														<!--Poora Table-->
+    <div class="col-xs-12">
+      <table class="table table-bordered table-striped" id="data-table">
+        <thead>
+          <tr class="header">
+            <th>id</th>
+            <th>area</th>
+            <th>count</th>
+            <th>system_ind</th>
+            <th>pointCount</th>
+          </tr>
+        </thead>
+      </table>
+    </div>
+  </div>
+  
 		<div id="map"></div>
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.2.0/leaflet.js"></script>     
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.13.0/d3.js"></script>     
@@ -34,7 +61,7 @@
 			
 			<!--  URL to get polygon (<Geoserver_Homepage> -> preview Layers -> click on drop down corresponding to required layer -> geoJson(jsonp) -> copy the URL) -->
 			<!-- var owsrootUrl = 'http://localhost:8080/geoserver/NESAC/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=NESAC:polygons10&maxFeatures=3000&outputFormat=text%2Fjavascript'; -->
-			var owsrootUrl = 'http://localhost:8080/geoserver/NESAC/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=NESAC:polygons10&maxFeatures=50000&outputFormat=application%2Fjson';
+			var owsrootUrl = 'http://localhost:8080/geoserver/NESAC/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=NESAC:mines2018&maxFeatures=7&outputFormat=application%2Fjson';
 			
 			<!--  Define a WFS layer -->
 			var WFSLayer = null;
@@ -45,7 +72,6 @@
 				url : owsrootUrl,
 				dataType : 'json',
 				async : false,
-				<!-- jsonpCallback : 'parseResponse',							 //name of default container function of jsonp response by geoserver  -->
 				success : function (response) {
 					WFSLayer = L.geoJson(response); 						 //capture the response and populate the vector layer
 					WFSLayer.addTo(map);
@@ -62,11 +88,60 @@
 
 			var featureCount = jsonObject.totalFeatures;
 			var allData = jsonObject.features; //Contains ALL the DATA
+			
 			var count = Object.keys(allData).length;
 			console.log("total polygons : " + count);
 			
+			_.each(allData, function(d) {<!--WORKS ON JSON OBJECTS-->
+			d.properties.area = +d.properties.area;<!--Convert count field to numerical value-->
+			d.properties.pointCount = Object.keys(d.geometry.coordinates["0"]["0"]).length;
+			<!-- console.log(d.properties.area + 2); -->
+			});
+  
 			var ndx = crossfilter(allData);
 			
+			// create dimensions (x-axis values)
+			var areaDim  = ndx.dimension(function(d) {return d.properties.area;});
+			var allDim = ndx.dimension(function(d) {return d;});
+			
+			var all = ndx.groupAll();
+			var countPerArea= areaDim.group().reduceCount();
+			
+			var areaChart   = dc.pieChart('#chart-ring-area');
+			var dataTable = dc.dataTable('#data-table');
+			
+			areaChart
+			  .width(150)
+			  .height(150)
+			  .dimension(areaDim)
+			  .group(countPerArea)
+			  .innerRadius(20);
+			  
+			  dataTable
+				.dimension(allDim)
+				.group(function (d) { return 'dc.js insists on putting a row here so I remove it using JS'; })
+				.size(100)
+				.columns([
+				  function (d) { return d.id; },
+				  function (d) { return d.properties.area; },
+				  function (d) { return d.properties.count; },
+				  function (d) { return d.properties.system_ind; },
+				  function (d) { return d.properties.pointCount; }
+				]).sortBy(dc.pluck('properties.area'))
+				.order(d3.descending)
+				.on('renderlet', function (table) {
+				  // each time table is rendered remove nasty extra row dc.js insists on adding
+				  table.select('tr.dc-table-group').remove();
+				  });
+				
+			
+			  // register handlers
+			  d3.selectAll('a#all').on('click', function () {
+				dc.filterAll();
+				dc.renderAll();
+			  });
+			  
+			    dc.renderAll();
 		</script>
 		
 	</body>
