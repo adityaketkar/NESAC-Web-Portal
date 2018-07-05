@@ -66,6 +66,7 @@
 			<!--  Define a WFS layer -->
 			var WFSLayer = null;
 			var jsonObject = null;
+			var MinePolyline = new L.FeatureGroup();
 			
 			 <!-- Populate the layer with data recieved  from geoserver -->
 			$.ajax({
@@ -74,7 +75,8 @@
 				async : false,
 				success : function (response) {
 					WFSLayer = L.geoJson(response); 						 //capture the response and populate the vector layer
-					WFSLayer.addTo(map);
+					MinePolyline.addLayer(WFSLayer);
+					MinePolyline.addTo(map);
 					jsonObject = response;
 				}
 			});
@@ -88,7 +90,8 @@
 
 			var featureCount = jsonObject.totalFeatures;
 			var allData = jsonObject.features; //Contains ALL the DATA
-			
+			var MineMarkers = new L.FeatureGroup();
+
 			var count = Object.keys(allData).length;
 			console.log("total polygons : " + count);
 			
@@ -132,8 +135,20 @@
 				.on('renderlet', function (table) {
 				  // each time table is rendered remove nasty extra row dc.js insists on adding
 				  table.select('tr.dc-table-group').remove();
-				  });
-				
+				  
+
+			 // update map with markers to match filtered data
+			  MineMarkers.clearLayers();
+			  _.each(allDim.top(Infinity), function (d) {
+				var loc = d.geometry.coordinates["0"]["0"]["0"];
+				var name = d.id;
+				var marker = L.marker([d.geometry.coordinates["0"]["0"]["0"]["1"], d.geometry.coordinates["0"]["0"]["0"]["0"]]);
+				marker.bindPopup("<p>" + name);
+				MineMarkers.addLayer(marker);
+			  });
+			  map.addLayer(MineMarkers);
+			  map.fitBounds(MineMarkers.getBounds());
+			});
 			
 			  // register handlers
 			  d3.selectAll('a#all').on('click', function () {
