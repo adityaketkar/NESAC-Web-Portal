@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html>
+	
+	<head lang="en">
+		<meta charset="UTF-8">                                                                               
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.2.0/leaflet.css"/>     <!--Leaflet Imports (CSS)-->
+		<style>html, body, #map {margin: 0;height: 100%;width: 100%;}</style>                                
+		<title>WFS Areas</title>      
+		<link rel="stylesheet" type="text/css" href="css/dc.css"> 			<!--Simple CSS imports, need not worry-->
+		<link rel="stylesheet" type="text/css" href="css/leaflet.css">
+		<link rel="stylesheet" type="text/css" href="css/bootstrap.css">
+		<link rel="stylesheet" type="text/css" href="css/main.css">		<!--title of web page-->
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>             <!--ajax Imports-->
+	</head>
+	
+	<body>
+	  <div class="row" id="control-row">									 <!--3XPie Charts Or Map wali Line-->
+	<div class="col-xs-12 bar-chart">
+      <h4>BAR <small><a id="area">reset</a></small></h4>
+      <div class="dc-chart" id="chart-countPixel-count"></div>
+    </div>
+	  </div>
+	<div>
+    <div class="col-xs-12">
+      <h4>Map</h4>
+      <div id="map"></div>
+    </div>
+  </div>
+  
+  <div class="row">														<!--Poora Table-->
+    <div class="col-xs-12">
+	<h4>Table</h4>
+      <table class="table table-bordered table-striped" id="data-table">
+        <thead>
+          <tr class="header">
+            <th>id</th>
+            <th>area</th>
+            <th>count</th>
+            <th>system_ind</th>
+            <th>pointCount</th>
+          </tr>
+        </thead>
+      </table>
+    </div>
+  </div>
+  
+		<div id="map"></div>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.2.0/leaflet.js"></script>     
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.13.0/d3.js"></script>     
+					<!--Leaflet Imports (javascript part)-->
+		<script type="text/javascript" src="js/d3.js"></script>
+		<script type="text/javascript" src="js/crossfilter.js"></script>
+		<script type="text/javascript" src="js/dc.js"></script>
+		<script type="text/javascript" src="js/leaflet.js"></script>
+		<script type="text/javascript" src="js/underscore-min.js"></script>
+		<script>
+			
+			<!--  Define map container and set map layer -->
+			var map = L.map('map').setView([25.50, 91], 8);
+			var basemap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+				attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+				maxZoom: 18
+			}).addTo(map);
+			
+			<!--  URL to get polygon (<Geoserver_Homepage> -> preview Layers -> click on drop down corresponding to required layer -> geoJson(jsonp) -> copy the URL) -->
+			<!-- var owsrootUrl = 'http://localhost:8080/geoserver/NESAC/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=NESAC:polygons10&maxFeatures=3000&outputFormat=text%2Fjavascript'; -->
+			var owsrootUrl = 'http://localhost:8080/geoserver/NESAC/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=NESAC:mines2018&maxFeatures=15&outputFormat=application%2Fjson';
+			
+			<!--  Define a WFS layer -->
+			var WFSLayer = null;
+			var jsonObject = null;
+			var MinePolyline = new L.FeatureGroup();
+			
+			 <!-- Populate the layer with data recieved  from geoserver -->
+			$.ajax({
+				url : owsrootUrl,
+				dataType : 'json',
+				async : false,
+				success : function (response) {
+					WFSLayer = L.geoJson(response); 						 //capture the response and populate the vector layer
+					MinePolyline.addLayer(WFSLayer);
+					MinePolyline.addTo(map);
+					jsonObject = response;
+				}
+			});
+			
+			<!-- if(jsonObject != null){ -->
+				<!-- alert(jsonObject.totalFeatures); -->
+			<!-- } -->
+			
+			var crsData = jsonObject.crs.properties.name;
+			<!-- alert(crsData); -->
+
+			var featureCount = jsonObject.totalFeatures;
+			var allData = jsonObject.features; //Contains ALL the DATA
+			var MineMarkers = new L.FeatureGroup();
+
+			var count = Object.keys(allData).length;
+			console.log("total polygons : " + count);
+			
+			_.each(allData, function(d) {<!--WORKS ON JSON OBJECTS-->
+			d.properties.area = +d.properties.area;<!--Convert count field to numerical value-->
+			d.properties.pointCount = Object.keys(d.geometry.coordinates["0"]["0"]).length;
+			<!-- console.log(d.properties.area + 2); -->
+			});
+  
+			var ndx = crossfilter(allData);
+			
+			// create dimensions (x-axis values)
+			var areaDim  = ndx.dimension(function(d) {return d.properties.area;});
+			var allDim = ndx.dimension(function(d) {return d;});
+			var areaCountDim  = ndx.dimension(function(d) {return d.properties.count;});
+
+						
+			var all = ndx.groupAll();
+			var countPerArea= areaDim.group().reduceCount();
+			var countPerPixelArea = areaCountDim.group().reduceCount();
+			
+			var areaChart   = dc.pieChart('#chart-ring-area');
+			var dataTable = dc.dataTable('#data-table');
+			var areaCountChart  = dc.barChart('#chart-countPixel-count');
+			
+			areaChart
+			  .width(150)
+			  .height(150)
+			  .dimension(areaDim)
+			  .group(countPerArea)
+			  .innerRadius(20);
+			  
+			  areaCountChart
+			  .width(600)
+			  .height(200)
+			  .dimension(areaCountDim)
+			  .group(countPerPixelArea)
+			  <!-- .x(d3.scale.linear().domain([10, d3.max(allData, function (d) { return d.properties.count; }) + 2])) -->
+			  .x(d3.scale.linear().domain([-2,100])) 
+			  .y(d3.scale.linear().domain([0,100])) 
+			  .elasticY(true)
+			  .centerBar(true)
+			  .barPadding(5)
+			  .xAxisLabel('Area of Mines rounded to nearest 10')
+			  .yAxisLabel('Count')
+			  .xUnits(function (d) { return 10;})
+			  .margins({top: 10, right: 20, bottom: 50, left: 50});
+			  
+			  
+			  dataTable
+				.dimension(allDim)
+				.group(function (d) { return 'dc.js insists on putting a row here so I remove it using JS'; })
+				.size(100)
+				.columns([
+				  function (d) { return d.id; },
+				  function (d) { return d.properties.area; },
+				  function (d) { return d.properties.count; },
+				  function (d) { return d.properties.system_ind; },
+				  function (d) { return d.properties.pointCount; }
+				]).sortBy(dc.pluck('properties.area'))
+				.order(d3.descending)
+				.on('renderlet', function (table) {
+				  // each time table is rendered remove nasty extra row dc.js insists on adding
+				  table.select('tr.dc-table-group').remove();
+				  
+
+			 // update map with markers to match filtered data
+			  MineMarkers.clearLayers();
+			  _.each(allDim.top(Infinity), function (d) {
+				var loc = d.geometry.coordinates["0"]["0"]["0"];
+				var name = d.id;
+				var marker = L.marker([d.geometry.coordinates["0"]["0"]["0"]["1"], d.geometry.coordinates["0"]["0"]["0"]["0"]]);
+				marker.bindPopup("<p>" + name);
+				MineMarkers.addLayer(marker);
+			  });
+			  map.addLayer(MineMarkers);
+			  map.fitBounds(MineMarkers.getBounds());
+			});
+			
+			  // register handlers
+			  d3.selectAll('a#all').on('click', function () {
+				dc.filterAll();
+				dc.renderAll();
+			  });
+			  
+			    dc.renderAll();
+		</script>
+		
+	</body>
+	
+</html>
